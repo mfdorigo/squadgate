@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Squad panel</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap">
+<style>
+/* Squad · painel v2 — sala de controle, mais enxuta:
+   panorama + trilha no topo, "precisa de você" só quando há algo, equipe, etapas e atividade recolhida. */
+:root{
+  --bg:#eef2f6; --surface:#fff; --sunk:#e3e8ef; --line:#d2dae5; --line-strong:#b6c1d0;
+  --fg:#121a27; --muted:#586477; --accent:#1f56c9; --accent-soft:#dfe8fb;
+  --ok:#13804a; --ok-soft:#dcf0e4; --warn:#985f00; --warn-soft:#f6e9cf; --crit:#bd2e36; --crit-soft:#f8dfe0; --idle:#8a96a8;
+  --display:"Space Grotesk",system-ui,sans-serif; --body:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0b1017; --surface:#121923; --sunk:#1a2230; --line:#243042; --line-strong:#334157;
+  --fg:#e4e9f0; --muted:#8e9aad; --accent:#78a2ff; --accent-soft:#1a2a47;
+  --ok:#46c483; --ok-soft:#14301f; --warn:#e9ad3e; --warn-soft:#33270f; --crit:#ff6b72; --crit-soft:#3a181b; --idle:#5d697c; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0b1017; --surface:#121923; --sunk:#1a2230; --line:#243042; --line-strong:#334157;
+  --fg:#e4e9f0; --muted:#8e9aad; --accent:#78a2ff; --accent-soft:#1a2a47;
+  --ok:#46c483; --ok-soft:#14301f; --warn:#e9ad3e; --warn-soft:#33270f; --crit:#ff6b72; --crit-soft:#3a181b; --idle:#5d697c; color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 var(--body)}
+.wrap{max-width:1040px;margin:0 auto;padding:24px 16px 56px;display:grid;gap:28px}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance}
+.label{font-size:.7rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+code{font-family:var(--mono);font-size:.86em}
+[hidden]{display:none!important}
+
+/* cabeçalho */
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px 16px;flex-wrap:wrap}
+.top h1{font-size:1.05rem;font-weight:500;color:var(--muted)}
+.live{display:inline-flex;align-items:center;gap:8px;font-size:.78rem;color:var(--muted)}
+.live i{width:8px;height:8px;border-radius:50%;background:var(--idle)}
+.live.on i{background:var(--ok);animation:pulse 2s ease-in-out infinite}
+.live.stale i{background:var(--warn)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tab{font:500 .78rem var(--mono);padding:4px 10px;border:1px solid var(--line);background:var(--surface);color:var(--muted);cursor:pointer}
+.tab[aria-selected="true"]{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+
+/* panorama */
+.hero{display:grid;gap:22px;padding:24px;background:var(--surface);border:1px solid var(--line)}
+.hero-row{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:24px;align-items:start}
+@media (max-width:760px){.hero-row{grid-template-columns:1fr}.hero{padding:18px}}
+.headline{display:grid;gap:6px}
+.headline h2{font-size:clamp(1.6rem,4vw,2.3rem);line-height:1.1;font-weight:700}
+.headline p{margin:0;color:var(--muted)}
+.state{display:grid;gap:8px;padding:14px 16px;border:1px solid var(--line);background:var(--bg)}
+.state strong{font-weight:600}
+.state .next{font-size:.88rem;color:var(--muted)}
+.pill{display:inline-flex;align-items:center;gap:7px;font-size:.68rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:3px 10px;border-radius:999px;background:var(--sunk);color:var(--muted);justify-self:start;white-space:nowrap}
+.pill i{width:6px;height:6px;border-radius:50%;background:currentColor}
+.pill.andamento,.pill.trabalhando{background:var(--accent-soft);color:var(--accent)}
+.pill.andamento i,.pill.trabalhando i{animation:pulse 1.4s ease-in-out infinite}
+.pill.aguardando{background:var(--warn-soft);color:var(--warn)}
+.pill.bloqueada,.pill.devolvida{background:var(--crit-soft);color:var(--crit)}
+.pill.concluida{background:var(--ok-soft);color:var(--ok)}
+@keyframes pulse{50%{opacity:.25}}
+
+/* trilha */
+.track{display:flex;gap:8px;flex-wrap:wrap}
+.seg{display:grid;gap:6px;min-width:64px;flex:1 1 0}
+.seg-head{display:flex;justify-content:space-between;gap:4px;font-size:.68rem;color:var(--muted);white-space:nowrap}
+.seg-head b{font-family:var(--mono);font-weight:500}
+.seg.cur .seg-head b{color:var(--accent)}
+.seg.done .seg-head b{color:var(--ok)}
+.cells{display:flex;gap:2px;height:14px}
+.cells i{flex:1;background:var(--sunk);border:1px solid var(--line)}
+.cells i.concluida{background:var(--ok);border-color:var(--ok)}
+.cells i.andamento{background:var(--accent);border-color:var(--accent);animation:pulse 1.6s ease-in-out infinite}
+.cells i.aguardando{background:var(--warn);border-color:var(--warn)}
+.cells i.devolvida{background:var(--crit);border-color:var(--crit)}
+.seg.pulada{opacity:.4}.seg.pulada .cells i{background:transparent;border-style:dashed}
+.seg-name{font-size:.74rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.seg.cur .seg-name{color:var(--fg);font-weight:600}
+
+/* seções */
+section{display:grid;gap:12px;min-width:0}
+.sec-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.sec-head h2{font-size:1.15rem}
+.sec-head span{font-size:.8rem;color:var(--muted)}
+
+/* precisa de você */
+.ask{display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;padding:12px 14px;background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--warn)}
+.ask b{color:var(--warn);font:500 .8rem var(--mono);padding-top:2px}
+
+/* equipe */
+.crew{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
+.agent{background:var(--surface);border:1px solid var(--accent);display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 12px;padding:14px;position:relative;overflow:hidden}
+.agent::after{content:"";position:absolute;left:0;bottom:0;height:2px;width:35%;background:var(--accent);animation:scan 2.4s ease-in-out infinite}
+@keyframes scan{0%{transform:translateX(-100%)}100%{transform:translateX(290%)}}
+.badge{grid-row:span 2;width:42px;height:42px;display:grid;place-items:center;font:500 .9rem var(--mono);background:var(--accent);color:var(--surface)}
+.agent-name{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.agent-role{font-size:.76rem;color:var(--muted)}
+.activity{grid-column:1/-1;margin-top:8px;font-size:.88rem}
+.since{grid-column:1/-1;font-size:.72rem;color:var(--muted)}
+.eta{grid-column:1/-1;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:6px;padding:5px 8px;background:var(--accent-soft);color:var(--accent);font-size:.75rem}
+.eta.late{background:var(--warn-soft);color:var(--warn)}
+.eta.none{background:var(--sunk);color:var(--muted)}
+.idle{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:.8rem;color:var(--muted)}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:2px 9px;border:1px solid var(--line);background:var(--surface);font-size:.76rem}
+.chip b{font:500 .7rem var(--mono)}
+.none{font-size:.88rem;color:var(--muted);padding:12px 14px;border:1px dashed var(--line-strong)}
+
+/* etapas */
+.list{border:1px solid var(--line);background:var(--surface)}
+.list ul{list-style:none;margin:0;padding:0}
+.row{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:2px 12px;padding:10px 16px;border-bottom:1px solid var(--line);align-items:baseline}
+.row:last-child{border-bottom:0}
+.row .id{font:500 .82rem var(--mono);color:var(--muted)}
+.row .t{min-width:0}
+.row .who{font-size:.78rem;color:var(--muted);white-space:nowrap}
+.row .meta{grid-column:2/-1;font-size:.78rem;color:var(--muted)}
+.row.andamento{background:var(--accent-soft)}.row.andamento .id{color:var(--accent)}
+.row.aguardando{background:var(--warn-soft)}.row.aguardando .id{color:var(--warn)}
+.row.devolvida .id{color:var(--crit)}
+.row.concluida .id{color:var(--ok)}
+.row.pulada{opacity:.45}
+.row.sub{padding-left:40px}.row.sub .id{font-size:.76rem}
+@media (max-width:560px){.row{grid-template-columns:44px minmax(0,1fr)}.row .who{grid-column:2}.row.sub{padding-left:24px}}
+
+/* atividade */
+details.feed{border:1px solid var(--line);background:var(--surface)}
+details.feed summary{cursor:pointer;padding:10px 16px;font-size:.84rem;color:var(--muted)}
+details.feed ul{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
+details.feed li{display:grid;grid-template-columns:64px minmax(0,1fr);gap:10px;padding:6px 16px;border-bottom:1px solid var(--line);font-size:.82rem}
+details.feed li:last-child{border-bottom:0}
+details.feed li span:first-child{color:var(--muted)}
+details.feed li span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+footer{font-size:.74rem;color:var(--muted)}
+
+/* comandos (gaveta) */
+.top-right{display:flex;align-items:center;gap:14px}
+.cmd-btn{display:inline-flex;align-items:center;gap:8px;font:500 .8rem var(--body);padding:6px 12px;border:1px solid var(--line-strong);background:var(--surface);color:var(--fg);cursor:pointer}
+.cmd-btn:hover,.cmd-btn[aria-expanded="true"]{border-color:var(--accent);color:var(--accent)}
+.cmd-btn:focus-visible,.cmd:focus-visible,.drawer-x:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+kbd{font:500 .7rem var(--mono);padding:0 5px;border:1px solid var(--line-strong);border-bottom-width:2px;color:var(--muted);background:var(--bg)}
+.scrim{position:fixed;inset:0;background:rgba(10,15,24,.35);opacity:0;pointer-events:none;transition:opacity .18s}
+.scrim.open{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(440px,100vw);background:var(--surface);border-left:1px solid var(--line-strong);display:flex;flex-direction:column;transform:translateX(100%);visibility:hidden;transition:transform .2s ease,visibility 0s .2s;z-index:10}
+.drawer.open{transform:none;visibility:visible;transition:transform .2s ease;box-shadow:-12px 0 32px rgba(10,15,24,.12)}
+.drawer-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:18px 20px;border-bottom:1px solid var(--line)}
+.drawer-head h2{font-size:1.1rem}
+.drawer-x{border:0;background:transparent;color:var(--muted);font-size:1.4rem;line-height:1;cursor:pointer;padding:2px 6px}
+.drawer-body{overflow-y:auto;padding:8px 20px 24px;display:grid;gap:18px}
+.drawer-body .hint{font-size:.78rem;color:var(--muted);margin:8px 0 0}
+.grp{display:grid;gap:6px}
+.cmd{display:grid;gap:2px;text-align:left;width:100%;padding:9px 12px;border:1px solid var(--line);background:var(--bg);color:var(--fg);cursor:pointer;font:inherit}
+.cmd:hover{border-color:var(--accent)}
+.cmd code{font-size:.84rem;color:var(--accent)}
+.cmd code em{font-style:normal;color:var(--muted)}
+.cmd span{font-size:.8rem;color:var(--muted)}
+.cmd.copied{border-color:var(--ok)}.cmd.copied code::after{color:var(--ok);font-family:var(--body);font-size:.75rem}
+.stops{list-style:none;margin:0;padding:0;display:grid;gap:4px;font-size:.82rem}
+.stops li{display:grid;grid-template-columns:62px minmax(0,1fr);gap:8px}
+.stops b{font:500 .78rem var(--mono);color:var(--muted)}
+@media (prefers-reduced-motion:reduce){.drawer,.scrim{transition:none}}
+.lang{display:inline-flex;border:1px solid var(--line-strong)}
+.lang button{font:500 .72rem var(--mono);padding:5px 9px;border:0;background:var(--surface);color:var(--muted);cursor:pointer}
+.lang button+button{border-left:1px solid var(--line-strong)}
+.lang button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent)}
+.lang button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.cmd.copied code::after{content:var(--copiado,"  copied")}
+@media (max-width:560px){.top-right{flex-wrap:wrap;gap:8px 10px}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1 id="titulo">Squad</h1>
+    <div class="top-right">
+      <span class="live" id="live"><i></i><span id="live-txt"></span></span>
+      <div class="lang" role="group" aria-label="Language / Idioma">
+        <button type="button" data-lang="pt" aria-pressed="false">PT</button><button type="button" data-lang="en" aria-pressed="false">EN</button>
+      </div>
+      <button class="cmd-btn" id="cmd-btn" type="button" aria-controls="drawer" aria-expanded="false"><span data-i="cmdBtn"></span> <kbd>?</kbd></button>
+    </div>
+  </header>
+
+  <div class="tabs" id="tabs" role="tablist" hidden></div>
+
+  <div class="hero" id="hero">
+    <div class="hero-row">
+      <div class="headline">
+        <span class="label" id="dem-id"></span>
+        <h2 id="hl"></h2>
+        <p id="hl-sub"></p>
+      </div>
+      <div class="state" id="state">
+        <span class="pill" id="st-pill"><i></i><span id="st-lbl">—</span></span>
+        <strong id="st-txt"></strong>
+        <span class="next" id="st-next"></span>
+        <span class="next mono" id="st-upd"></span>
+      </div>
+    </div>
+    <div class="track" id="track"></div>
+  </div>
+
+  <section id="ask-sec" hidden aria-labelledby="ask-h">
+    <div class="sec-head"><h2 id="ask-h" data-i="precisa"></h2></div>
+    <div id="asks" style="display:grid;gap:8px"></div>
+  </section>
+
+  <section aria-labelledby="crew-h">
+    <div class="sec-head"><h2 id="crew-h" data-i="equipe"></h2><span id="crew-sum"></span></div>
+    <div class="crew" id="crew"></div>
+    <div class="idle" id="idle"></div>
+  </section>
+
+  <section id="steps-sec" aria-labelledby="steps-h">
+    <div class="sec-head"><h2 id="steps-h" data-i="etapas"></h2><span id="steps-sum"></span></div>
+    <div class="list"><ul id="steps"></ul></div>
+  </section>
+
+  <details class="feed" id="feed-box">
+    <summary id="feed-sum"></summary>
+    <ul id="feed"></ul>
+  </details>
+
+  <footer data-i="rodape"></footer>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-h" aria-hidden="true">
+  <div class="drawer-head"><h2 id="drawer-h" data-i="cmdTitulo"></h2><button class="drawer-x" id="drawer-x" type="button">×</button></div>
+  <div class="drawer-body" id="drawer-body"></div>
+</aside>
+
+<script>
+(function(){
+  "use strict";
+  var $=function(id){return document.getElementById(id);};
+  function el(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e;}
+  function rich(t,text){t.textContent="";String(text||"").split("`").forEach(function(p,i){if(!p)return;t.appendChild(i%2?el("code",null,p):document.createTextNode(p));});return t;}
+  function fmt(s){var a=[].slice.call(arguments,1),i=0;return String(s).replace(/%s/g,function(){return a[i++];});}
+
+  // ---------------------------------------------------------------- idioma
+  var I18N={
+    pt:{loc:"pt-BR",titulo:"Squad · acompanhamento",cmdBtn:"Comandos",fechar:"Fechar",
+      conectando:"Conectando…",semDados:"Sem dados: o painel está ligado?",desligado:"Painel desligado · use /squad painel para ligar",
+      aoVivo:"Ao vivo · último sinal às %s",semSinal:"Sem sinal %s com agente rodando",ocioso:"Ocioso desde %s",ha:"há %s",
+      onde:"Onde estamos",nenhuma:"Nenhuma demanda em andamento",comece:"Comece uma com /squad <demanda>. A equipe e a atividade abaixo continuam ao vivo.",
+      tamanho:"tamanho",passo:"passo a passo",semPainel:"O Orquestrador ainda não gravou o painel.json desta demanda.",
+      todas:"Todas as etapas concluídas",etapaDe:"Etapa %s de %s · %s",proximo:"Próximo: ",atualizado:"atualizado às %s · %s",
+      SIT:{andamento:"Em andamento",aguardando:"Aguardando você",bloqueada:"Bloqueada",pausada:"Pausada",concluida:"Concluída",cancelada:"Cancelada"},
+      ST:{pendente:"Pendente",andamento:"Rodando",aguardando:"Aguardando você",concluida:"Concluída",devolvida:"Devolvida",pulada:"Pulada"},
+      papeis:{"squad-analista":["Analista","Requisitos e critérios de aceite"],"squad-arquiteto":["Arquiteto","Plano e revisão de código"],
+        "squad-desenvolvedor":["Desenvolvedor","Implementação por bloco"],"squad-qa":["QA","Testes e validação"]},
+      trabalhando:"Trabalhando",semDesc:"Sem descrição da tarefa.",passou:"Passou da previsão",previsao:"Previsão de término",
+      alem:"%s além",em:"em %s",previsaoApos:"Previsão aparece após 2 execuções deste papel",comecou:"começou %s · %s",
+      um:"1 agente trabalhando",varios:"%s agentes trabalhando",ninguem:"ninguém trabalhando agora",disp:"Disponíveis:",todosDisp:"Todos disponíveis:",
+      precisa:"Precisa de você",equipe:"Equipe",etapas:"Etapas",concluidas:"%s de %s concluídas",tentativa:"tentativa %s de 3",rodada:"rodada %s de 2",
+      atividade:"Atividade recente (%s)",semAtividade:"Sem atividade registrada desde que o painel foi ligado.",
+      evInicio:"%s começou",evFim:"%s terminou em %s",
+      rodape:"Painel local, só leitura. Equipe, previsão e atividade vêm dos hooks; etapas e situação vêm do painel.json que o Orquestrador grava a cada passagem de bastão. Não consome cota.",
+      cmdTitulo:"Comandos da squad",dica:"Clique num comando para copiar e cole no Claude Code. ? abre e Esc fecha.",copiado:"copiado",
+      grupos:["Demanda","Acompanhar","Configurar"],paradasT:"Paradas (você aprova)",
+      paradas:[["Parada 0","Entendimento, tamanho (P/M/G) e branch."],["Parada 1","História: escopo e critérios de aceite (M e G)."],
+        ["Parada 2","Plano e paralelismo: sequência ou 2 devs (só G)."],["Parada 3","Entrega pronta: você faz o merge com squash."]],
+      cmds:[[0,"/squad ","<demanda>","Inicia uma demanda, com as paradas de aprovação."],[0,"/squad --passo-a-passo ","<demanda>","Igual, parando também após cada bloco e após a revisão."],
+        [0,"/squad continuar ","<id>","Retoma uma demanda interrompida."],[0,"/squad cancelar ","<id>","Encerra a demanda sem apagar nada e desliga as travas."],
+        [1,"/squad status","","Demandas do projeto e o que espera por você."],[1,"/squad custo","","Tokens por agente e modelo. Avisa se o Orquestrador saiu do Sonnet."],
+        [1,"/squad relatorio","","Foto do andamento para compartilhar."],[2,"/squad painel","","Liga e abre este painel."],[2,"/squad painel off","","Desliga este painel."],
+        [2,"/squad avisos","","Liga o som e a notificação do sistema."],[2,"/squad avisos off","","Desliga o som e a notificação."]]},
+    en:{loc:"en-US",tam:{P:"S",M:"M",G:"L"},titulo:"Squad · monitor",cmdBtn:"Commands",fechar:"Close",
+      conectando:"Connecting…",semDados:"No data: is the panel on?",desligado:"Panel off · use /squad panel to turn it on",
+      aoVivo:"Live · last signal at %s",semSinal:"No signal for %s with an agent running",ocioso:"Idle since %s",ha:"%s ago",
+      onde:"Where we are",nenhuma:"No demand in progress",comece:"Start one with /squad <demand>. The team and activity below stay live.",
+      tamanho:"size",passo:"step by step",semPainel:"The Orchestrator has not written this demand's painel.json yet.",
+      todas:"All steps done",etapaDe:"Step %s of %s · %s",proximo:"Next: ",atualizado:"updated at %s · %s",
+      SIT:{andamento:"In progress",aguardando:"Waiting for you",bloqueada:"Blocked",pausada:"Paused",concluida:"Done",cancelada:"Cancelled"},
+      ST:{pendente:"Pending",andamento:"Running",aguardando:"Waiting for you",concluida:"Done",devolvida:"Sent back",pulada:"Skipped"},
+      papeis:{"squad-analista":["Analyst","Requirements and acceptance criteria"],"squad-arquiteto":["Architect","Plan and code review"],
+        "squad-desenvolvedor":["Developer","Block-by-block implementation"],"squad-qa":["QA","Tests and validation"]},
+      trabalhando:"Working",semDesc:"No task description.",passou:"Past the estimate",previsao:"Estimated finish",
+      alem:"%s over",em:"in %s",previsaoApos:"Estimate shows after 2 runs of this role",comecou:"started %s · %s",
+      um:"1 agent working",varios:"%s agents working",ninguem:"nobody working now",disp:"Available:",todosDisp:"All available:",
+      precisa:"Needs you",equipe:"Team",etapas:"Steps",concluidas:"%s of %s done",tentativa:"attempt %s of 3",rodada:"round %s of 2",
+      atividade:"Recent activity (%s)",semAtividade:"No activity recorded since the panel was turned on.",
+      evInicio:"%s started",evFim:"%s finished in %s",
+      rodape:"Local, read-only panel. Team, estimates and activity come from hooks; steps and status come from the painel.json the Orchestrator writes at each handoff. Uses no quota.",
+      cmdTitulo:"Squad commands",dica:"Click a command to copy it, then paste it into Claude Code. ? opens, Esc closes.",copiado:"copied",
+      grupos:["Demand","Monitor","Settings"],paradasT:"Gates (you approve)",
+      paradas:[["Gate 0","Understanding, size (S/M/L) and branch."],["Gate 1","Story: scope and acceptance criteria (M and L)."],
+        ["Gate 2","Plan and parallelism: sequential or 2 devs (L only)."],["Gate 3","Delivery ready: you merge with squash."]],
+      cmds:[[0,"/squad ","<demand>","Starts a demand, with approval gates."],[0,"/squad --step-by-step ","<demand>","Same, also stopping after each block and after review."],
+        [0,"/squad continue ","<id>","Resumes an interrupted demand."],[0,"/squad cancel ","<id>","Ends the demand without deleting anything and turns guardrails off."],
+        [1,"/squad status","","Demands in this project and what waits for you."],[1,"/squad cost","","Tokens per agent and model. Warns if the Orchestrator left Sonnet."],
+        [1,"/squad report","","Snapshot of progress to share."],[2,"/squad panel","","Turns on and opens this panel."],[2,"/squad panel off","","Turns this panel off."],
+        [2,"/squad alerts","","Turns on system sound and notifications."],[2,"/squad alerts off","","Turns sound and notifications off."]]}
+  };
+  var lang="pt";
+  try{lang=localStorage.getItem("squad-lang")||"";}catch(e){}
+  if(!I18N[lang])lang=/^pt/i.test(navigator.language||"")?"pt":"en";
+  function L(){return I18N[lang];}
+  function hhmm(ms){return new Date(ms).toLocaleTimeString(L().loc,{hour:"2-digit",minute:"2-digit"});}
+  function hms(ms){return new Date(ms).toLocaleTimeString(L().loc);}
+  function dur(s){s=Math.max(0,Math.round(s));if(s<60)return s+" s";var m=Math.round(s/60);if(m<60)return m+" min";return Math.floor(m/60)+" h"+(m%60?" "+(m%60)+" min":"");}
+  function ago(ms){return fmt(L().ha,dur((Date.now()-ms)/1000));}
+  function papel(tipo){return L().papeis[tipo]||[tipo,""];}
+  var TIPOS=[["squad-analista","AN"],["squad-arquiteto","AR"],["squad-desenvolvedor","DV"],["squad-qa","QA"]];
+
+  var dados=null, sel=null, falhas=0;
+  try{sel=localStorage.getItem("squad-sel");}catch(e){}
+
+  function demanda(){
+    var ds=(dados&&dados.demandas)||[];
+    if(!ds.length)return null;
+    var d=ds.filter(function(x){return x.id+"@"+x.projeto===sel;})[0];
+    return d||ds[0];
+  }
+
+  function renderTabs(){
+    var ds=(dados&&dados.demandas)||[], box=$("tabs");
+    box.hidden=ds.length<2; box.textContent="";
+    var cur=demanda();
+    ds.forEach(function(d){
+      var k=d.id+"@"+d.projeto, b=el("button","tab",d.id+" · "+d.projetoNome);
+      b.setAttribute("role","tab"); b.setAttribute("aria-selected",cur&&k===cur.id+"@"+cur.projeto?"true":"false");
+      b.onclick=function(){sel=k;try{localStorage.setItem("squad-sel",k);}catch(e){}renderAll();};
+      box.appendChild(b);
+    });
+  }
+
+  function etapasVisiveis(p){return (p.etapas||[]).filter(function(e){return e.status!=="pulada";});}
+
+  function renderHero(){
+    var d=demanda(), p=d&&d.painel, T=L();
+    $("track").textContent=""; $("titulo").textContent=T.titulo;
+    if(!d){
+      $("dem-id").textContent=T.onde; $("hl").textContent=T.nenhuma; $("hl-sub").textContent=T.comece;
+      $("state").hidden=true; $("track").hidden=true; return;
+    }
+    $("titulo").textContent="Squad · "+d.projetoNome;
+    $("dem-id").textContent=d.id+(p&&p.tamanho?" · "+T.tamanho+" "+((T.tam||{})[p.tamanho]||p.tamanho):"")+(p&&p.modo==="passo-a-passo"?" · "+T.passo:"");
+    if(!p){
+      $("hl").textContent=d.id; $("hl-sub").textContent=T.semPainel;
+      $("state").hidden=true; $("track").hidden=true; return;
+    }
+    $("state").hidden=false; $("track").hidden=false;
+    var vis=etapasVisiveis(p), idx=-1;
+    vis.forEach(function(e,i){if(idx<0&&e.status!=="concluida")idx=i;});
+    $("hl").textContent=idx<0?T.todas:fmt(T.etapaDe,idx+1,vis.length,vis[idx].nome);
+    $("hl-sub").textContent=p.titulo||"";
+    var sit=p.situacao||"andamento";
+    $("st-pill").className="pill "+sit; $("st-lbl").textContent=T.SIT[sit]||sit;
+    rich($("st-txt"),p.texto||"");
+    var nx=$("st-next"); nx.textContent=""; if(p.proximo){nx.appendChild(document.createTextNode(T.proximo));rich(nx.appendChild(el("span")),p.proximo);}
+    $("st-upd").textContent=p.atualizadoEm?fmt(T.atualizado,hhmm(Date.parse(p.atualizadoEm)),ago(Date.parse(p.atualizadoEm))):"";
+    (p.etapas||[]).forEach(function(e){
+      var cur=vis[idx]===e;
+      var seg=el("div","seg"+(e.status==="concluida"?" done":"")+(e.status==="pulada"?" pulada":"")+(cur?" cur":""));
+      var subs=e.blocos&&e.blocos.length?e.blocos:null;
+      if(subs)seg.style.flexGrow=String(Math.max(1,subs.length*0.6));
+      seg.title=e.nome+" · "+(T.ST[e.status]||e.status);
+      var h=el("div","seg-head"); h.appendChild(el("b",null,e.id||""));
+      if(subs)h.appendChild(el("span","mono",subs.filter(function(b){return b.status==="concluida";}).length+"/"+subs.length));
+      seg.appendChild(h);
+      var c=el("div","cells"); (subs||[e]).forEach(function(x){c.appendChild(el("i",x.status||"pendente"));}); seg.appendChild(c);
+      seg.appendChild(el("div","seg-name",e.nome)); $("track").appendChild(seg);
+    });
+  }
+
+  function renderAsks(){
+    var d=demanda(), list=(d&&d.painel&&d.painel.pendencias)||[];
+    $("ask-sec").hidden=!list.length; var box=$("asks"); box.textContent="";
+    list.forEach(function(t,i){var a=el("div","ask");a.appendChild(el("b",null,String(i+1).padStart(2,"0")));a.appendChild(rich(el("div"),t));box.appendChild(a);});
+  }
+
+  function renderCrew(){
+    var ags=(dados&&dados.agentes)||[], box=$("crew"), idle=$("idle"), T=L();
+    box.textContent=""; idle.textContent="";
+    var ocupados={};
+    ags.forEach(function(a){
+      ocupados[a.tipo]=(ocupados[a.tipo]||0)+1;
+      var pp=papel(a.tipo), c=el("article","agent");
+      c.appendChild(el("div","badge",a.iniciais||"··"));
+      var nm=el("div","agent-name"); nm.appendChild(el("strong",null,pp[0]));
+      var p=el("span","pill trabalhando"); p.appendChild(el("i")); p.appendChild(document.createTextNode(T.trabalhando)); nm.appendChild(p);
+      c.appendChild(nm); c.appendChild(el("div","agent-role",pp[1]+(a.projetoNome?" · "+a.projetoNome:"")));
+      c.appendChild(rich(el("div","activity"),a.atividade||T.semDesc));
+      var ini=a.inicio*1000, e;
+      if(a.previsaoSeg){
+        var fim=ini+a.previsaoSeg*1000, late=Date.now()>fim;
+        e=el("div","eta mono"+(late?" late":""));
+        e.appendChild(el("span",null,late?T.passou:T.previsao));
+        e.appendChild(el("b",null,"~"+hhmm(fim)+" · "+(late?fmt(T.alem,dur((Date.now()-fim)/1000)):fmt(T.em,dur((fim-Date.now())/1000)))));
+      }else{
+        e=el("div","eta none mono"); e.appendChild(el("span",null,T.previsaoApos));
+      }
+      c.appendChild(e);
+      c.appendChild(el("div","since mono",fmt(T.comecou,hhmm(ini),ago(ini))));
+      box.appendChild(c);
+    });
+    $("crew-sum").textContent=ags.length?(ags.length===1?T.um:fmt(T.varios,ags.length)):T.ninguem;
+    var livres=TIPOS.filter(function(r){return !ocupados[r[0]];});
+    if(livres.length){
+      idle.appendChild(el("span",null,ags.length?T.disp:T.todosDisp));
+      livres.forEach(function(r){var ch=el("span","chip");ch.appendChild(el("b",null,r[1]));ch.appendChild(document.createTextNode(papel(r[0])[0]));idle.appendChild(ch);});
+    }
+  }
+
+  function renderSteps(){
+    var d=demanda(), p=d&&d.painel, ul=$("steps"), T=L();
+    $("steps-sec").hidden=!p; if(!p)return;
+    ul.textContent="";
+    var vis=etapasVisiveis(p), feitas=vis.filter(function(e){return e.status==="concluida";}).length;
+    $("steps-sum").textContent=fmt(T.concluidas,feitas,vis.length);
+    function linha(x,sub){
+      var st=x.status||"pendente", r=el("li","row "+st+(sub?" sub":""));
+      r.appendChild(el("span","id",x.id||""));
+      r.appendChild(rich(el("span","t"),x.nome||""));
+      r.appendChild(el("span","who",[x.quem,T.ST[st]||st].filter(Boolean).join(" · ")));
+      var meta=[x.tentativa>1?fmt(T.tentativa,x.tentativa):"",x.rodada?fmt(T.rodada,x.rodada):"",x.nota].filter(Boolean).join(" · ");
+      if(meta)r.appendChild(rich(el("div","meta"),meta));
+      ul.appendChild(r);
+    }
+    (p.etapas||[]).forEach(function(e){linha(e,false);(e.blocos||[]).forEach(function(b){linha(b,true);});});
+  }
+
+  function textoEvento(x){
+    var T=L();
+    if(x.k==="inicio")return fmt(T.evInicio,papel(x.tipo)[0])+(x.ativ?": "+x.ativ:"");
+    if(x.k==="fim")return fmt(T.evFim,papel(x.tipo)[0],dur(x.dur||0));
+    return x.texto||"";
+  }
+
+  function renderFeed(){
+    var ev=(dados&&dados.eventos)||[], ul=$("feed"), T=L(); ul.textContent="";
+    $("feed-sum").textContent=fmt(T.atividade,ev.length);
+    if(!ev.length){ul.appendChild(el("li",null,T.semAtividade));return;}
+    ev.forEach(function(x){var li=el("li"), txt=textoEvento(x);li.appendChild(el("span","mono",hms(x.t*1000)));
+      var t=el("span",null,(x.projeto?x.projeto+" · ":"")+txt);t.title=txt;li.appendChild(t);ul.appendChild(li);});
+  }
+
+  function renderLive(){
+    var lv=$("live"), tx=$("live-txt"), T=L();
+    if(!dados){lv.className="live stale";tx.textContent=falhas>2?T.semDados:T.conectando;return;}
+    if(dados.desligado){lv.className="live";tx.textContent=T.desligado;return;}
+    var g=dados.geradoEm*1000, parado=(Date.now()-g)/1000;
+    if(parado<90){lv.className="live on";tx.textContent=fmt(T.aoVivo,hms(g));}
+    else if((dados.agentes||[]).length){lv.className="live stale";tx.textContent=fmt(T.semSinal,dur(parado));}
+    else{lv.className="live";tx.textContent=fmt(T.ocioso,hhmm(g));}
+  }
+
+  // gaveta de comandos: montada a partir do idioma
+  function renderDrawer(){
+    var T=L(), body=$("drawer-body"); body.textContent="";
+    body.appendChild(el("p","hint",T.dica));
+    T.grupos.forEach(function(g,gi){
+      var grp=el("div","grp"); grp.appendChild(el("span","label",g));
+      T.cmds.filter(function(c){return c[0]===gi;}).forEach(function(c){
+        var b=el("button","cmd"); b.type="button"; b.setAttribute("data-copy",c[1]);
+        var code=el("code",null,c[2]?c[1]:c[1].trim()); if(c[2])code.appendChild(el("em",null,c[2]));
+        b.appendChild(code); b.appendChild(el("span",null,c[3])); grp.appendChild(b);
+      });
+      body.appendChild(grp);
+    });
+    var gp=el("div","grp"); gp.appendChild(el("span","label",T.paradasT));
+    var ul=el("ul","stops"); T.paradas.forEach(function(p){var li=el("li");li.appendChild(el("b",null,p[0]));li.appendChild(el("span",null,p[1]));ul.appendChild(li);});
+    gp.appendChild(ul); body.appendChild(gp);
+  }
+
+  function aplicarIdioma(){
+    var T=L();
+    document.documentElement.lang=T.loc;
+    [].forEach.call(document.querySelectorAll("[data-i]"),function(n){n.textContent=T[n.getAttribute("data-i")];});
+    [].forEach.call(document.querySelectorAll(".lang button"),function(b){b.setAttribute("aria-pressed",b.getAttribute("data-lang")===lang?"true":"false");});
+    $("drawer-x").setAttribute("aria-label",T.fechar);
+    document.body.style.setProperty("--copiado",JSON.stringify("  "+T.copiado));
+    renderDrawer(); renderAll();
+  }
+  [].forEach.call(document.querySelectorAll(".lang button"),function(b){
+    b.addEventListener("click",function(){lang=b.getAttribute("data-lang");try{localStorage.setItem("squad-lang",lang);}catch(e){}aplicarIdioma();});
+  });
+
+  function renderAll(){renderTabs();renderHero();renderAsks();renderCrew();renderSteps();renderFeed();renderLive();}
+
+  // Atualização: recarrega só o arquivo de dados local (dados.js) a cada 3 s. Não consome cota.
+  function carregar(){
+    var s=document.createElement("script");
+    s.src="dados.js?t="+Date.now();
+    s.onload=function(){falhas=0;dados=window.__SQUAD__||null;renderAll();s.remove();};
+    s.onerror=function(){falhas++;renderLive();s.remove();};
+    document.head.appendChild(s);
+  }
+
+  // gaveta: abrir, fechar, copiar
+  var d=$("drawer"),sc=$("scrim"),bt=$("cmd-btn"),x=$("drawer-x");
+  function abrir(on){d.classList.toggle("open",on);sc.classList.toggle("open",on);d.setAttribute("aria-hidden",on?"false":"true");bt.setAttribute("aria-expanded",on?"true":"false");if(on)x.focus();else bt.focus();}
+  bt.addEventListener("click",function(){abrir(!d.classList.contains("open"));});
+  x.addEventListener("click",function(){abrir(false);});
+  sc.addEventListener("click",function(){abrir(false);});
+  document.addEventListener("keydown",function(e){
+    if(e.key==="Escape"&&d.classList.contains("open"))abrir(false);
+    else if(e.key==="?"&&!/INPUT|TEXTAREA/.test((e.target.tagName||""))){e.preventDefault();abrir(!d.classList.contains("open"));}
+  });
+  function copiarAntigo(txt){
+    var t=document.createElement("textarea");t.value=txt;t.style.position="fixed";t.style.opacity="0";document.body.appendChild(t);t.select();
+    try{document.execCommand("copy");}catch(e){}document.body.removeChild(t);
+  }
+  function copiar(txt){
+    try{if(navigator.clipboard)return navigator.clipboard.writeText(txt).catch(function(){copiarAntigo(txt);});}catch(e){}
+    copiarAntigo(txt);return Promise.resolve();
+  }
+  d.addEventListener("click",function(e){
+    var c=e.target.closest(".cmd");if(!c)return;
+    copiar(c.getAttribute("data-copy")).then(function(){c.classList.add("copied");setTimeout(function(){c.classList.remove("copied");},1400);});
+  });
+
+  aplicarIdioma(); carregar(); setInterval(carregar,3000);
+})();
+</script>
+</body>
+</html>

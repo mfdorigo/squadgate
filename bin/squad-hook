@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# squadgate global hook. Exits right away (without starting Python) when there is nothing to do:
+#   - travas: only act while a /squad demand is active in some project;
+#   - painel: only acts while the panel is on (/squad painel);
+#   - agente: only acts on squad agents (squad-*): foreground rule, end alert, team and ETA;
+#   - parada: only alerts about a question to the user while a /squad demand is active.
+# Never blocks the user's work because of a missing Python: it simply exits 0.
+. "$(dirname "$0")/_comum.sh"
+roda() { sg_python || { cat >/dev/null; exit 0; }; exec "${SG_PY[@]}" "$SG_CODE/lib/squad.py" hook "$1"; }
+case "$1" in
+  travas-pre|travas-post)
+    for f in "$SG_STATE"/ativas/*.json; do [ -e "$f" ] && roda "$1"; done
+    cat >/dev/null; exit 0 ;;
+  parada)
+    [ -f "$SG_STATE/avisos-desligados" ] && { cat >/dev/null; exit 0; }
+    for f in "$SG_STATE"/ativas/*.json; do [ -e "$f" ] && roda parada; done
+    cat >/dev/null; exit 0 ;;
+  painel)
+    [ -f "$SG_STATE/painel-ligado" ] || { cat >/dev/null; exit 0; }
+    roda painel ;;
+  agente)
+    entrada=$(cat)
+    case "$entrada" in
+      *'"squad-'*) sg_python || exit 0
+        printf '%s' "$entrada" | "${SG_PY[@]}" "$SG_CODE/lib/squad.py" hook agente; exit $? ;;
+    esac
+    exit 0 ;;
+esac
+cat >/dev/null; exit 0

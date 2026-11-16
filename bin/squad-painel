@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Live panel and alerts: on | off | gerar | avisos [off]
+. "$(dirname "$0")/_comum.sh"
+sg_python || { echo "squadgate: Python 3 not found." >&2; exit 1; }
+exec "${SG_PY[@]}" "$SG_CODE/lib/squad.py" painel "$@"

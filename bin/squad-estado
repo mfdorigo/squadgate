@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Demand state: iniciar <id> | encerrar | ativa | listar | custo [session]
+. "$(dirname "$0")/_comum.sh"
+sg_python || { echo "squadgate: Python 3 not found." >&2; exit 1; }
+exec "${SG_PY[@]}" "$SG_CODE/lib/squad.py" estado "$@"

@@ -1,0 +1,17 @@
+{
+  "PreToolUse": [
+    {"matcher": "Bash", "hooks": [{"type": "command", "command": "{{HOOK}} travas-pre", "timeout": 15}]},
+    {"matcher": "Task|Agent", "hooks": [{"type": "command", "command": "{{HOOK}} agente", "timeout": 15}]},
+    {"matcher": "AskUserQuestion", "hooks": [{"type": "command", "command": "{{HOOK}} parada", "timeout": 15}]}
+  ],
+  "PostToolUse": [
+    {"matcher": "Bash", "hooks": [{"type": "command", "command": "{{HOOK}} travas-post", "timeout": 15}]},
+    {"matcher": "*", "hooks": [{"type": "command", "command": "{{HOOK}} painel", "timeout": 15}]}
+  ],
+  "SubagentStart": [
+    {"hooks": [{"type": "command", "command": "{{HOOK}} agente", "timeout": 15}]}
+  ],
+  "SubagentStop": [
+    {"hooks": [{"type": "command", "command": "{{HOOK}} agente", "timeout": 15}]}
+  ]
+}
