@@ -868,6 +868,17 @@ def demandas_ativas():
     return itens
 
 
+def atualizar_pagina():
+    """Recopia o modelo para a página do painel quando o squadgate foi atualizado.
+
+    Devolve a versão do modelo (mtime): a página aberta compara com a dela e se recarrega sozinha.
+    """
+    versao = int(os.path.getmtime(TEMPLATE))
+    if not os.path.exists(PAINEL_HTML) or os.path.getmtime(PAINEL_HTML) < versao:
+        shutil.copyfile(TEMPLATE, PAINEL_HTML)
+    return versao
+
+
 def gerar_dados(desligado=False):
     os.makedirs(PAINEL_DIR, exist_ok=True)
     if desligado:
@@ -894,7 +905,7 @@ def gerar_dados(desligado=False):
             eventos.reverse()
         except Exception:
             pass
-        saida = {"geradoEm": agora(), "demandas": demandas, "agentes": agentes, "eventos": eventos}
+        saida = {"geradoEm": agora(), "pagina": atualizar_pagina(), "demandas": demandas, "agentes": agentes, "eventos": eventos}
     tmp = PAINEL_DADOS + ".tmp"
     with open(tmp, "w") as f:
         f.write("window.__SQUAD__=" + json.dumps(saida, ensure_ascii=False) + ";\n")
@@ -906,10 +917,7 @@ def painel(args):
     os.makedirs(PAINEL_DIR, exist_ok=True)
     if sub == "on":
         open(PAINEL_FLAG, "w").close()
-        with open(TEMPLATE) as f:
-            pagina = f.read()
-        with open(PAINEL_HTML, "w") as f:
-            f.write(pagina)
+        shutil.copyfile(TEMPLATE, PAINEL_HTML)
         gerar_dados()
         abrir_no_navegador(PAINEL_HTML)
         print("Panel on: %s" % PAINEL_HTML)
