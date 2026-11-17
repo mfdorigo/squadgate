@@ -101,6 +101,30 @@ class PainelDados(unittest.TestCase):
         with open(self.squad.PAINEL_HTML) as f:
             self.assertEqual(f.read(), "<p>current page</p>")
 
+    def hook(self, evento, **extra):
+        dados = {"hook_event_name": evento, "cwd": self.projeto, "session_id": "s1"}
+        dados.update(extra)
+        self.squad.notificar = lambda *a, **k: None  # never sound/notify on the real machine
+        self.squad.hook_agente(dados)
+
+    def test_ux_role_is_a_squad_role(self):
+        self.hook("SubagentStart", agent_type="squad-ux", agent_id="a1")
+        self.squad.gerar_dados()
+        ag = self.ler_dados()["agentes"][0]
+        self.assertEqual((ag["tipo"], ag["iniciais"], ag["foraDaSquad"]), ("squad-ux", "UX", False))
+
+    def test_agent_outside_the_squad_is_tracked_and_flagged(self):
+        self.hook("PreToolUse", tool_input={"subagent_type": "general-purpose", "description": "Prototype",
+                                            "run_in_background": False})
+        self.hook("SubagentStart", agent_type="general-purpose", agent_id="g1")
+        self.squad.gerar_dados()
+        ag = self.ler_dados()["agentes"][0]
+        self.assertEqual((ag["tipo"], ag["iniciais"], ag["foraDaSquad"], ag["atividade"]),
+                         ("general-purpose", "··", True, "Prototype"))
+        self.hook("SubagentStop", agent_type="general-purpose", agent_id="g1")
+        self.squad.gerar_dados()
+        self.assertEqual(self.ler_dados()["agentes"], [])
+
     def test_panel_off_still_writes_data(self):
         self.squad.gerar_dados(desligado=True)
         self.assertTrue(self.ler_dados()["desligado"])

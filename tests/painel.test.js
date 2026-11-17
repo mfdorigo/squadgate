@@ -174,6 +174,23 @@ teste("orchestrator role is translated", () => {
   assert.ok(montar(dadosCom(painel), "pt").texto().includes("Orquestrador · Rodando"));
 });
 
+teste("UX role is named in both languages", () => {
+  const painel = Object.assign({}, NOVO, { etapas: [{ id: "E1", status: "andamento", quem: "ux" }] });
+  const en = montar(dadosCom(painel), "en").texto();
+  assert.ok(en.includes("UX · Running"));
+  assert.ok(montar(dadosCom(painel), "pt").texto().includes("UX · Rodando"));
+});
+
+teste("agent outside the squad shows, flagged, instead of disappearing", () => {
+  const dados = dadosCom(NOVO);
+  dados.agentes = [{ tipo: "general-purpose", iniciais: "··", foraDaSquad: true, atividade: "Prototype", inicio: Date.now() / 1000 }];
+  const en = montar(dados, "en").texto();
+  assert.ok(en.includes("general-purpose"));
+  assert.ok(en.includes("Outside the squad"));
+  assert.ok(en.includes("1 agent working"));
+  assert.ok(montar(dados, "pt").texto().includes("Fora da squad"));
+});
+
 teste("page reloads itself when squadgate updates the template", () => {
   const dados = dadosCom(NOVO);
   const p = montar(dados, "en");

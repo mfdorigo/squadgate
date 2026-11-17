@@ -2,7 +2,7 @@
 
 **A development squad for Claude Code: AI agents with human approval gates, safety guardrails, and measured cost.**
 
-You describe a demand. An orchestrator moves it through four specialist agents (Analyst, Architect, Developer, QA) and stops at fixed **gates** where you approve, adjust or cancel. Between gates the squad works on its own, inside guardrails that block risky commands, and you can watch it live in a local panel.
+You describe a demand. An orchestrator moves it through five specialist agents (Analyst, UX, Architect, Developer, QA) and stops at fixed **gates** where you approve, adjust or cancel. Between gates the squad works on its own, inside guardrails that block risky commands, and you can watch it live in a local panel.
 
 ```
 /squad Add CSV export to the monthly report
@@ -19,7 +19,7 @@ You describe a demand. An orchestrator moves it through four specialist agents (
 | Gate | When | You approve |
 |---|---|---|
 | **Gate 0** | Right after `/squad` | Understanding, size (S/M/L), roles and branch |
-| **Gate 1** | After the Analyst | The story: scope and acceptance criteria |
+| **Gate 1** | After the Analyst (and UX, when a screen changes) | The story: scope and acceptance criteria; the screen sketch and, on request, a prototype |
 | **Gate 2** | After the Architect's plan (L only) | The blocks of work, and **sequential or 2 developers in parallel** |
 | **Gate 3** | Delivery ready | The result; you merge the PR with squash |
 
@@ -41,6 +41,7 @@ Between Gate 2 and Gate 3 the squad runs on its own: tests first, implementation
 |---|---|---|---|
 | Orchestrator (`/squad` skill) | Sonnet | Coordinates, records, asks for approval. Makes no technical decisions. | `progresso.md`, `painel.json` |
 | Analyst | Opus | Questions the premise, finds the smallest valuable scope, writes testable acceptance criteria. | `historia.md` |
+| UX | Opus | When the story touches a screen: sketches it in text (ASCII), justifying every element, and on request builds a clickable HTML prototype in the project's own visual style. | `telas.md`, `prototipo.html` |
 | Architect | Opus | Simplest solution that works, split into blocks; later reviews the code, security and commits. | `plano.md`, `review.md` |
 | Developer | Sonnet | One block per call, one commit per block. | code |
 | QA | Sonnet | Tests from the criteria before the code; then validates criterion by criterion. | tests |
@@ -159,7 +160,7 @@ It reads local files only and **uses no Claude quota**.
 ```
 squadgate/
 ├── install.sh · uninstall.sh · hooks.json
-├── agents/                 Analyst, Architect, Developer, QA
+├── agents/                 Analyst, UX, Architect, Developer, QA
 ├── skills/squad/SKILL.md   Orchestrator and /squad commands
 ├── bin/                    squad-estado, squad-painel, squad-hook
 ├── lib/squad.py            state, guardrails, panel, cost, alerts

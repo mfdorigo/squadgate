@@ -84,7 +84,7 @@ def idioma():
 TEXTOS = {
     "pt": {
         "papeis": {"squad-analista": "Analista", "squad-arquiteto": "Arquiteto",
-                   "squad-desenvolvedor": "Desenvolvedor", "squad-qa": "QA"},
+                   "squad-desenvolvedor": "Desenvolvedor", "squad-qa": "QA", "squad-ux": "UX"},
         "terminou": "%s terminou em %s", "precisa": "Squad precisa de você · %s",
         "pergunta": "Há uma pergunta para você.", "avisos_on": "Avisos ligados.",
         "orq": "Orquestrador", "quem": "Quem", "modelo": "Modelo", "chamadas": "Chamadas", "saida": "Saída",
@@ -99,7 +99,7 @@ TEXTOS = {
     },
     "en": {
         "papeis": {"squad-analista": "Analyst", "squad-arquiteto": "Architect",
-                   "squad-desenvolvedor": "Developer", "squad-qa": "QA"},
+                   "squad-desenvolvedor": "Developer", "squad-qa": "QA", "squad-ux": "UX"},
         "terminou": "%s finished in %s", "precisa": "Squad needs you · %s",
         "pergunta": "There is a question for you.", "avisos_on": "Alerts on.",
         "orq": "Orchestrator", "quem": "Who", "modelo": "Model", "chamadas": "Calls", "saida": "Output",
@@ -611,8 +611,10 @@ def estado(args):
 
 # ----------------------------------------------------------------------------
 # painel (v2)
-#   - agentes.json / historico.json: mantidos SEMPRE para agentes squad-* (hook "agente"),
+#   - agentes.json / historico.json: mantidos SEMPRE para qualquer agente (hook "agente"),
 #     para a equipe e a previsão funcionarem mesmo se o painel for ligado no meio.
+#     Agente fora dos papéis da squad (general-purpose, Explore...) também aparece, marcado
+#     como "fora da squad": trabalho em andamento nunca fica invisível no painel.
 #   - eventos.jsonl: só gravado com o painel ligado.
 #   - dados.js: o que a página lê a cada 3 s. Regerado pelos hooks com o painel ligado.
 # ----------------------------------------------------------------------------
@@ -623,7 +625,8 @@ PAINEL_DADOS = os.path.join(PAINEL_DIR, "dados.js")
 TEMPLATE = os.path.join(CODE, "painel", "template.html")
 
 # papel -> iniciais (nomes e descrições ficam com o painel e com TEXTOS, nos dois idiomas)
-PAPEIS = {"squad-analista": "AN", "squad-arquiteto": "AR", "squad-desenvolvedor": "DV", "squad-qa": "QA"}
+PAPEIS = {"squad-analista": "AN", "squad-arquiteto": "AR", "squad-desenvolvedor": "DV", "squad-qa": "QA",
+          "squad-ux": "UX"}
 
 
 def agora():
@@ -795,22 +798,22 @@ def hook_agente(dados):
         ag.setdefault("rodando", {})
         ag.setdefault("pendente", {})
         if evento == "PreToolUse":
-            tipo = entrada.get("subagent_type") or ""
-            if tipo in PAPEIS:
+            tipo = entrada.get("subagent_type") or "general-purpose"
+            if tipo:
                 ag["pendente"].setdefault(tipo, []).append(entrada.get("description") or "")
                 ag["pendente"][tipo] = ag["pendente"][tipo][-4:]
         elif evento == "SubagentStart":
-            tipo = dados.get("agent_type") or ""
-            if tipo in PAPEIS:
+            tipo = dados.get("agent_type") or "general-purpose"
+            if tipo:
                 fila = ag["pendente"].get(tipo) or []
                 ativ = fila.pop(0) if fila else ""
                 ag["rodando"][dados.get("agent_id", "?")] = {
                     "tipo": tipo, "inicio": agora(), "atividade": ativ, "projeto": projeto}
                 evento_painel = {"k": "inicio", "tipo": tipo, "ativ": ativ}
         elif evento == "SubagentStop":
-            tipo = dados.get("agent_type") or ""
             a = ag["rodando"].pop(dados.get("agent_id", "?"), None)
-            if a and tipo in PAPEIS:
+            tipo = (a or {}).get("tipo") or dados.get("agent_type") or ""
+            if a and tipo:
                 duracao = agora() - a["inicio"]
                 hist = ler_json(HISTORICO, {})
                 hist.setdefault(tipo, []).append(round(duracao))
@@ -895,6 +898,7 @@ def gerar_dados(desligado=False):
         for a in sorted((ler_json(AGENTES, {}).get("rodando") or {}).values(), key=lambda x: x.get("inicio", 0)):
             amostras = hist.get(a.get("tipo")) or []
             agentes.append({"tipo": a.get("tipo"), "iniciais": PAPEIS.get(a.get("tipo"), "··"),
+                            "foraDaSquad": a.get("tipo") not in PAPEIS,
                             "atividade": a.get("atividade"), "inicio": a.get("inicio"),
                             "projetoNome": a.get("projeto"),
                             "previsaoSeg": mediana(amostras) if len(amostras) >= 2 else None})

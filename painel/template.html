@@ -95,6 +95,9 @@ section{display:grid;gap:12px;min-width:0}
 .agent::after{content:"";position:absolute;left:0;bottom:0;height:2px;width:35%;background:var(--accent);animation:scan 2.4s ease-in-out infinite}
 @keyframes scan{0%{transform:translateX(-100%)}100%{transform:translateX(290%)}}
 .badge{grid-row:span 2;width:42px;height:42px;display:grid;place-items:center;font:500 .9rem var(--mono);background:var(--accent);color:var(--surface)}
+.agent.fora{border-color:var(--warn);border-style:dashed}
+.agent.fora .badge{background:var(--warn)}
+.agent.fora .agent-role{color:var(--warn)}
 .agent-name{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .agent-role{font-size:.76rem;color:var(--muted)}
 .activity{grid-column:1/-1;margin-top:8px;font-size:.88rem}
@@ -252,7 +255,8 @@ kbd{font:500 .7rem var(--mono);padding:0 5px;border:1px solid var(--line-strong)
       ST:{pendente:"Pendente",andamento:"Rodando",aguardando:"Aguardando você",concluida:"Concluída",devolvida:"Devolvida",pulada:"Pulada"},
       ETAPA:{E0:"Entendimento",E1:"História",E2:"Plano",E3:"Testes",E4:"Implementação",E5:"Revisão",E6:"Entrega"},orq:"Orquestrador",
       papeis:{"squad-analista":["Analista","Requisitos e critérios de aceite"],"squad-arquiteto":["Arquiteto","Plano e revisão de código"],
-        "squad-desenvolvedor":["Desenvolvedor","Implementação por bloco"],"squad-qa":["QA","Testes e validação"]},
+        "squad-desenvolvedor":["Desenvolvedor","Implementação por bloco"],"squad-qa":["QA","Testes e validação"],
+        "squad-ux":["UX","Rascunho e protótipo de tela"]},foraSquad:"Fora da squad: o Orquestrador deveria ter perguntado antes",
       trabalhando:"Trabalhando",semDesc:"Sem descrição da tarefa.",passou:"Passou da previsão",previsao:"Previsão de término",
       alem:"%s além",em:"em %s",previsaoApos:"Previsão aparece após 2 execuções deste papel",comecou:"começou %s · %s",
       um:"1 agente trabalhando",varios:"%s agentes trabalhando",ninguem:"ninguém trabalhando agora",disp:"Disponíveis:",todosDisp:"Todos disponíveis:",
@@ -279,7 +283,8 @@ kbd{font:500 .7rem var(--mono);padding:0 5px;border:1px solid var(--line-strong)
       ST:{pendente:"Pending",andamento:"Running",aguardando:"Waiting for you",concluida:"Done",devolvida:"Sent back",pulada:"Skipped"},
       ETAPA:{E0:"Understanding",E1:"Story",E2:"Plan",E3:"Tests",E4:"Implementation",E5:"Review",E6:"Delivery"},orq:"Orchestrator",
       papeis:{"squad-analista":["Analyst","Requirements and acceptance criteria"],"squad-arquiteto":["Architect","Plan and code review"],
-        "squad-desenvolvedor":["Developer","Block-by-block implementation"],"squad-qa":["QA","Tests and validation"]},
+        "squad-desenvolvedor":["Developer","Block-by-block implementation"],"squad-qa":["QA","Tests and validation"],
+        "squad-ux":["UX","Screen sketch and prototype"]},foraSquad:"Outside the squad: the Orchestrator should have asked first",
       trabalhando:"Working",semDesc:"No task description.",passou:"Past the estimate",previsao:"Estimated finish",
       alem:"%s over",em:"in %s",previsaoApos:"Estimate shows after 2 runs of this role",comecou:"started %s · %s",
       um:"1 agent working",varios:"%s agents working",ninguem:"nobody working now",disp:"Available:",todosDisp:"All available:",
@@ -305,7 +310,7 @@ kbd{font:500 .7rem var(--mono);padding:0 5px;border:1px solid var(--line-strong)
   function hms(ms){return new Date(ms).toLocaleTimeString(L().loc);}
   function dur(s){s=Math.max(0,Math.round(s));if(s<60)return s+" s";var m=Math.round(s/60);if(m<60)return m+" min";return Math.floor(m/60)+" h"+(m%60?" "+(m%60)+" min":"");}
   function ago(ms){return fmt(L().ha,dur((Date.now()-ms)/1000));}
-  function papel(tipo){return L().papeis[tipo]||[tipo,""];}
+  function papel(tipo){return L().papeis[tipo]||[tipo,L().foraSquad];}
   // Texto livre do painel.json: {"pt": "...", "en": "..."} (formato atual) ou string (formato antigo, mostrado como está).
   function tx(v){
     if(v==null)return "";
@@ -317,13 +322,13 @@ kbd{font:500 .7rem var(--mono);padding:0 5px;border:1px solid var(--line-strong)
   function nomeEtapa(e){return L().ETAPA[e.id]||tx(e.nome);}
   // "quem" é um papel fixo (analista, arquiteto, desenvolvedor, qa, orquestrador); aceita também o nome em inglês.
   var QUEM={analista:"squad-analista",analyst:"squad-analista",arquiteto:"squad-arquiteto",architect:"squad-arquiteto",
-    desenvolvedor:"squad-desenvolvedor",developer:"squad-desenvolvedor",qa:"squad-qa"};
+    desenvolvedor:"squad-desenvolvedor",developer:"squad-desenvolvedor",qa:"squad-qa",ux:"squad-ux",designer:"squad-ux"};
   function nomeQuem(v){
     var s=tx(v), k=s.trim().toLowerCase().replace(/^squad-/,"");
     if(k==="orquestrador"||k==="orchestrator")return L().orq;
     return QUEM[k]?papel(QUEM[k])[0]:s;
   }
-  var TIPOS=[["squad-analista","AN"],["squad-arquiteto","AR"],["squad-desenvolvedor","DV"],["squad-qa","QA"]];
+  var TIPOS=[["squad-analista","AN"],["squad-arquiteto","AR"],["squad-desenvolvedor","DV"],["squad-qa","QA"],["squad-ux","UX"]];
 
   var dados=null, sel=null, falhas=0;
   try{sel=localStorage.getItem("squad-sel");}catch(e){}
@@ -398,7 +403,7 @@ kbd{font:500 .7rem var(--mono);padding:0 5px;border:1px solid var(--line-strong)
     var ocupados={};
     ags.forEach(function(a){
       ocupados[a.tipo]=(ocupados[a.tipo]||0)+1;
-      var pp=papel(a.tipo), c=el("article","agent");
+      var pp=papel(a.tipo), c=el("article","agent"+(a.foraDaSquad?" fora":""));
       c.appendChild(el("div","badge",a.iniciais||"··"));
       var nm=el("div","agent-name"); nm.appendChild(el("strong",null,pp[0]));
       var p=el("span","pill trabalhando"); p.appendChild(el("i")); p.appendChild(document.createTextNode(T.trabalhando)); nm.appendChild(p);

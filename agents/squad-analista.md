@@ -77,6 +77,7 @@ Menor escopo: <1 a 2 frases; se propõe reduzir ou não fazer, diga aqui>
 Tamanho sugerido: P | M | G (<motivo em poucas palavras>)
 Critérios: CA-1 <uma linha curta> · CA-2 <...> · ...
 Fora de escopo: <uma linha>
+Toca tela: sim | não (<telas criadas ou alteradas>)
 Bloqueantes:
 - <pergunta completa>
 Suposições principais: <uma linha>

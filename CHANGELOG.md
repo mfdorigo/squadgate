@@ -2,6 +2,16 @@
 
 All notable changes to squadgate. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- UX role (`squad-ux`): when the story touches a screen, it sketches it in `telas.md` before Gate 1, and on request builds a clickable prototype (`prototipo.html`) for discussion. Shows in the panel as "UX".
+- The panel shows every running agent, not only squad roles. An agent outside the squad shows with a dashed warning border.
+
+### Changed
+- The orchestrator calls only squad roles. Any other agent (general-purpose, Explore, Plan, fork) needs the user's permission first, with a note that the squad may need adjusting.
+- The Analyst's summary says whether the story touches a screen.
+
 ## [0.2.0] - 2026-11-17
 
 ### Changed
