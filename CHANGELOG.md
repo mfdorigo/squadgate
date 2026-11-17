@@ -2,7 +2,7 @@
 
 All notable changes to squadgate. Versions follow [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.3.0] - 2026-11-17
 
 ### Added
 - UX role (`squad-ux`): when the story touches a screen, it sketches it in `telas.md` before Gate 1, and on request builds a clickable prototype (`prototipo.html`) for discussion. Shows in the panel as "UX".
