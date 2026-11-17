@@ -2,6 +2,15 @@
 
 All notable changes to squadgate. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+- The PT / EN switch now changes the whole panel. The orchestrator writes every free text in `painel.json` in Portuguese and English (`{"pt": ..., "en": ...}`), and the panel names steps E0–E6 and roles itself. Older `painel.json` files with plain strings still show as written.
+- The panel page refreshes itself after squadgate is updated, instead of keeping the old page until `/squad panel` runs again.
+
+### Added
+- First automated tests (`tests/`): panel rendering in both languages and the panel data generation.
+
 ## [0.1.0] - 2026-11-16
 
 First usable version.

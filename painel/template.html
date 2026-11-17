@@ -250,6 +250,7 @@ kbd{font:500 .7rem var(--mono);padding:0 5px;border:1px solid var(--line-strong)
       todas:"Todas as etapas concluídas",etapaDe:"Etapa %s de %s · %s",proximo:"Próximo: ",atualizado:"atualizado às %s · %s",
       SIT:{andamento:"Em andamento",aguardando:"Aguardando você",bloqueada:"Bloqueada",pausada:"Pausada",concluida:"Concluída",cancelada:"Cancelada"},
       ST:{pendente:"Pendente",andamento:"Rodando",aguardando:"Aguardando você",concluida:"Concluída",devolvida:"Devolvida",pulada:"Pulada"},
+      ETAPA:{E0:"Entendimento",E1:"História",E2:"Plano",E3:"Testes",E4:"Implementação",E5:"Revisão",E6:"Entrega"},orq:"Orquestrador",
       papeis:{"squad-analista":["Analista","Requisitos e critérios de aceite"],"squad-arquiteto":["Arquiteto","Plano e revisão de código"],
         "squad-desenvolvedor":["Desenvolvedor","Implementação por bloco"],"squad-qa":["QA","Testes e validação"]},
       trabalhando:"Trabalhando",semDesc:"Sem descrição da tarefa.",passou:"Passou da previsão",previsao:"Previsão de término",
@@ -276,6 +277,7 @@ kbd{font:500 .7rem var(--mono);padding:0 5px;border:1px solid var(--line-strong)
       todas:"All steps done",etapaDe:"Step %s of %s · %s",proximo:"Next: ",atualizado:"updated at %s · %s",
       SIT:{andamento:"In progress",aguardando:"Waiting for you",bloqueada:"Blocked",pausada:"Paused",concluida:"Done",cancelada:"Cancelled"},
       ST:{pendente:"Pending",andamento:"Running",aguardando:"Waiting for you",concluida:"Done",devolvida:"Sent back",pulada:"Skipped"},
+      ETAPA:{E0:"Understanding",E1:"Story",E2:"Plan",E3:"Tests",E4:"Implementation",E5:"Review",E6:"Delivery"},orq:"Orchestrator",
       papeis:{"squad-analista":["Analyst","Requirements and acceptance criteria"],"squad-arquiteto":["Architect","Plan and code review"],
         "squad-desenvolvedor":["Developer","Block-by-block implementation"],"squad-qa":["QA","Tests and validation"]},
       trabalhando:"Working",semDesc:"No task description.",passou:"Past the estimate",previsao:"Estimated finish",
@@ -304,6 +306,23 @@ kbd{font:500 .7rem var(--mono);padding:0 5px;border:1px solid var(--line-strong)
   function dur(s){s=Math.max(0,Math.round(s));if(s<60)return s+" s";var m=Math.round(s/60);if(m<60)return m+" min";return Math.floor(m/60)+" h"+(m%60?" "+(m%60)+" min":"");}
   function ago(ms){return fmt(L().ha,dur((Date.now()-ms)/1000));}
   function papel(tipo){return L().papeis[tipo]||[tipo,""];}
+  // Texto livre do painel.json: {"pt": "...", "en": "..."} (formato atual) ou string (formato antigo, mostrado como está).
+  function tx(v){
+    if(v==null)return "";
+    if(typeof v!=="object")return String(v);
+    var t=v[lang]!=null?v[lang]:(v.pt!=null?v.pt:v.en);
+    return t==null?"":String(t);
+  }
+  // Etapas E0–E6 são fixas: o nome vem do painel, no idioma escolhido. Blocos e ids desconhecidos usam o texto gravado.
+  function nomeEtapa(e){return L().ETAPA[e.id]||tx(e.nome);}
+  // "quem" é um papel fixo (analista, arquiteto, desenvolvedor, qa, orquestrador); aceita também o nome em inglês.
+  var QUEM={analista:"squad-analista",analyst:"squad-analista",arquiteto:"squad-arquiteto",architect:"squad-arquiteto",
+    desenvolvedor:"squad-desenvolvedor",developer:"squad-desenvolvedor",qa:"squad-qa"};
+  function nomeQuem(v){
+    var s=tx(v), k=s.trim().toLowerCase().replace(/^squad-/,"");
+    if(k==="orquestrador"||k==="orchestrator")return L().orq;
+    return QUEM[k]?papel(QUEM[k])[0]:s;
+  }
   var TIPOS=[["squad-analista","AN"],["squad-arquiteto","AR"],["squad-desenvolvedor","DV"],["squad-qa","QA"]];
 
   var dados=null, sel=null, falhas=0;
@@ -346,31 +365,31 @@ kbd{font:500 .7rem var(--mono);padding:0 5px;border:1px solid var(--line-strong)
     $("state").hidden=false; $("track").hidden=false;
     var vis=etapasVisiveis(p), idx=-1;
     vis.forEach(function(e,i){if(idx<0&&e.status!=="concluida")idx=i;});
-    $("hl").textContent=idx<0?T.todas:fmt(T.etapaDe,idx+1,vis.length,vis[idx].nome);
-    $("hl-sub").textContent=p.titulo||"";
+    $("hl").textContent=idx<0?T.todas:fmt(T.etapaDe,idx+1,vis.length,nomeEtapa(vis[idx]));
+    $("hl-sub").textContent=tx(p.titulo);
     var sit=p.situacao||"andamento";
     $("st-pill").className="pill "+sit; $("st-lbl").textContent=T.SIT[sit]||sit;
-    rich($("st-txt"),p.texto||"");
-    var nx=$("st-next"); nx.textContent=""; if(p.proximo){nx.appendChild(document.createTextNode(T.proximo));rich(nx.appendChild(el("span")),p.proximo);}
+    rich($("st-txt"),tx(p.texto));
+    var nx=$("st-next"), prox=tx(p.proximo); nx.textContent=""; if(prox){nx.appendChild(document.createTextNode(T.proximo));rich(nx.appendChild(el("span")),prox);}
     $("st-upd").textContent=p.atualizadoEm?fmt(T.atualizado,hhmm(Date.parse(p.atualizadoEm)),ago(Date.parse(p.atualizadoEm))):"";
     (p.etapas||[]).forEach(function(e){
       var cur=vis[idx]===e;
       var seg=el("div","seg"+(e.status==="concluida"?" done":"")+(e.status==="pulada"?" pulada":"")+(cur?" cur":""));
       var subs=e.blocos&&e.blocos.length?e.blocos:null;
       if(subs)seg.style.flexGrow=String(Math.max(1,subs.length*0.6));
-      seg.title=e.nome+" · "+(T.ST[e.status]||e.status);
+      seg.title=nomeEtapa(e)+" · "+(T.ST[e.status]||e.status);
       var h=el("div","seg-head"); h.appendChild(el("b",null,e.id||""));
       if(subs)h.appendChild(el("span","mono",subs.filter(function(b){return b.status==="concluida";}).length+"/"+subs.length));
       seg.appendChild(h);
       var c=el("div","cells"); (subs||[e]).forEach(function(x){c.appendChild(el("i",x.status||"pendente"));}); seg.appendChild(c);
-      seg.appendChild(el("div","seg-name",e.nome)); $("track").appendChild(seg);
+      seg.appendChild(el("div","seg-name",nomeEtapa(e))); $("track").appendChild(seg);
     });
   }
 
   function renderAsks(){
     var d=demanda(), list=(d&&d.painel&&d.painel.pendencias)||[];
     $("ask-sec").hidden=!list.length; var box=$("asks"); box.textContent="";
-    list.forEach(function(t,i){var a=el("div","ask");a.appendChild(el("b",null,String(i+1).padStart(2,"0")));a.appendChild(rich(el("div"),t));box.appendChild(a);});
+    list.forEach(function(t,i){var a=el("div","ask");a.appendChild(el("b",null,String(i+1).padStart(2,"0")));a.appendChild(rich(el("div"),tx(t)));box.appendChild(a);});
   }
 
   function renderCrew(){
@@ -415,9 +434,9 @@ kbd{font:500 .7rem var(--mono);padding:0 5px;border:1px solid var(--line-strong)
     function linha(x,sub){
       var st=x.status||"pendente", r=el("li","row "+st+(sub?" sub":""));
       r.appendChild(el("span","id",x.id||""));
-      r.appendChild(rich(el("span","t"),x.nome||""));
-      r.appendChild(el("span","who",[x.quem,T.ST[st]||st].filter(Boolean).join(" · ")));
-      var meta=[x.tentativa>1?fmt(T.tentativa,x.tentativa):"",x.rodada?fmt(T.rodada,x.rodada):"",x.nota].filter(Boolean).join(" · ");
+      r.appendChild(rich(el("span","t"),sub?tx(x.nome):nomeEtapa(x)));
+      r.appendChild(el("span","who",[nomeQuem(x.quem),T.ST[st]||st].filter(Boolean).join(" · ")));
+      var meta=[x.tentativa>1?fmt(T.tentativa,x.tentativa):"",x.rodada?fmt(T.rodada,x.rodada):"",tx(x.nota)].filter(Boolean).join(" · ");
       if(meta)r.appendChild(rich(el("div","meta"),meta));
       ul.appendChild(r);
     }
@@ -483,10 +502,16 @@ kbd{font:500 .7rem var(--mono);padding:0 5px;border:1px solid var(--line-strong)
   function renderAll(){renderTabs();renderHero();renderAsks();renderCrew();renderSteps();renderFeed();renderLive();}
 
   // Atualização: recarrega só o arquivo de dados local (dados.js) a cada 3 s. Não consome cota.
+  // Se o squadgate foi atualizado (dados.pagina mudou), recarrega a página para pegar o modelo novo.
+  var versaoPagina=null;
   function carregar(){
     var s=document.createElement("script");
     s.src="dados.js?t="+Date.now();
-    s.onload=function(){falhas=0;dados=window.__SQUAD__||null;renderAll();s.remove();};
+    s.onload=function(){
+      falhas=0;dados=window.__SQUAD__||null;s.remove();
+      if(dados&&dados.pagina){if(versaoPagina==null)versaoPagina=dados.pagina;else if(dados.pagina!==versaoPagina){location.reload();return;}}
+      renderAll();
+    };
     s.onerror=function(){falhas++;renderLive();s.remove();};
     document.head.appendChild(s);
   }

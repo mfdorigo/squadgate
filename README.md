@@ -125,7 +125,7 @@ It reads local files only and **uses no Claude quota**.
 
 - The squad writes in the language of your demand: story, plan, gates, status, commits.
 - Commit language follows the project: its `CLAUDE.md`, else the language of the existing commits, else the demand's.
-- The panel follows your browser language and has a PT / EN switch; notifications follow the OS language.
+- The panel starts in your browser language and has a PT / EN switch that changes the whole panel, whatever the demand's language: the orchestrator writes the panel texts in both languages, and the panel names the steps and roles itself. Agent task descriptions (team cards and activity) stay in the demand's language. Notifications follow the OS language.
 - The agent prompts are written in Brazilian Portuguese, the language they were validated in. They instruct the agents to answer in the demand's language.
 
 ---

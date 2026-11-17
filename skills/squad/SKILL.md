@@ -66,7 +66,7 @@ Scripts da squad (sempre por este caminho, exatamente assim):
 
     Critério: high onde um erro custa caro (entendimento, desenho, demanda grande, tentativa que já falhou) e medium no trabalho de execução com escopo definido. Correção pedida pela revisão usa a linha do Desenvolvedor com o número da tentativa.
 
-13. **Idioma.** Detecte o idioma em que o usuário escreveu a demanda (no `continuar`, o idioma do `progresso.md`). Use esse idioma em tudo o que você e os agentes escrevem: mensagens, paradas, linha de status, `progresso.md`, textos do `painel.json` e arquivos da demanda. Os modelos deste arquivo estão em português: traduza títulos e rótulos quando o idioma for outro. Em inglês, "Parada" é **Gate**, "Etapa" é **Step**, "história" é **story**, "bloco" é **block**, e os tamanhos P/M/G são **S/M/L** (no `painel.json`, `tamanho` continua `P`, `M` ou `G`).
+13. **Idioma.** Detecte o idioma em que o usuário escreveu a demanda (no `continuar`, o idioma do `progresso.md`). Use esse idioma em tudo o que você e os agentes escrevem: mensagens, paradas, linha de status, `progresso.md` e arquivos da demanda. **Exceção obrigatória:** os textos livres do `painel.json` vão sempre em português **e** inglês, em qualquer idioma de demanda (seção 5.1), porque o painel tem uma chave PT / EN. Os modelos deste arquivo estão em português: traduza títulos e rótulos quando o idioma for outro. Em inglês, "Parada" é **Gate**, "Etapa" é **Step**, "história" é **story**, "bloco" é **block**, e os tamanhos P/M/G são **S/M/L** (no `painel.json`, `tamanho` continua `P`, `M` ou `G`).
     - **Idioma de commit:** o que o `CLAUDE.md` do projeto definir; senão, o idioma dos últimos commits (`git log -5 --format=%s`); num projeto sem commits, o idioma da demanda. Defina na Etapa 0 e registre no `progresso.md`.
     - Ao chamar um agente, diga no início do prompt: `Idioma: <idioma da demanda> · Idioma de commit: <idioma>`.
     - Os nomes de arquivos e pastas (`docs/demandas/<id>/historia.md` etc.), as chaves do `painel.json` e os comandos `/squad` não mudam.
@@ -193,31 +193,34 @@ Regrave o arquivo inteiro, em uma única escrita curta, nos mesmos momentos do `
 ```json
 {
   "id": "DEM-007",
-  "titulo": "Exportar relatório em CSV",
+  "titulo": {"pt": "Exportar relatório em CSV", "en": "Export report as CSV"},
   "tamanho": "M",
   "modo": "normal",
-  "situacao": "andamento",
-  "texto": "Desenvolvedor implementando o bloco B1",
-  "proximo": "Revisão do Arquiteto",
-  "pendencias": [],
+  "situacao": "aguardando",
+  "texto": {"pt": "Bloco B1 pronto; Arquiteto pediu 1 ajuste", "en": "Block B1 done; Architect asked for 1 fix"},
+  "proximo": {"pt": "Parada 3: aprovar a entrega", "en": "Gate 3: approve the delivery"},
+  "pendencias": [{"pt": "Dizer se o CSV usa ponto e vírgula", "en": "Say whether the CSV uses semicolons"}],
   "atualizadoEm": "2026-11-13T10:42:00-03:00",
   "etapas": [
-    {"id": "E0", "nome": "Entendimento", "status": "concluida"},
-    {"id": "E1", "nome": "História", "status": "concluida", "quem": "Analista"},
-    {"id": "E2", "nome": "Plano", "status": "pulada"},
-    {"id": "E3", "nome": "Testes", "status": "concluida", "quem": "QA"},
-    {"id": "E4", "nome": "Implementação", "status": "andamento", "quem": "Desenvolvedor",
-     "blocos": [{"id": "B1", "nome": "Gerar o CSV a partir do relatório", "status": "andamento", "quem": "Desenvolvedor", "tentativa": 1}]},
-    {"id": "E5", "nome": "Revisão", "status": "pendente", "quem": "Arquiteto", "rodada": 0},
-    {"id": "E6", "nome": "Entrega", "status": "pendente", "quem": "QA"}
+    {"id": "E0", "status": "concluida"},
+    {"id": "E1", "status": "concluida", "quem": "analista"},
+    {"id": "E2", "status": "pulada"},
+    {"id": "E3", "status": "concluida", "quem": "qa"},
+    {"id": "E4", "status": "andamento", "quem": "desenvolvedor",
+     "blocos": [{"id": "B1", "nome": {"pt": "Gerar o CSV a partir do relatório", "en": "Build the CSV from the report"}, "status": "andamento", "quem": "desenvolvedor", "tentativa": 1}]},
+    {"id": "E5", "status": "pendente", "quem": "arquiteto", "rodada": 0, "nota": {"pt": "1 ajuste pedido", "en": "1 fix requested"}},
+    {"id": "E6", "status": "pendente", "quem": "qa"}
   ]
 }
 ```
 
-- As **chaves** e os valores de `situacao` e `status` são fixos, sempre como abaixo, em qualquer idioma: o painel traduz. Os textos livres (`titulo`, `texto`, `proximo`, `pendencias`, `nome`, `nota`) vão no idioma da demanda.
+- **Textos livres sempre em português e inglês (obrigatório).** `titulo`, `texto`, `proximo`, cada item de `pendencias`, `nota` e o `nome` de cada bloco são objetos `{"pt": "...", "en": "..."}`, com **as duas chaves preenchidas em toda escrita**, qualquer que seja o idioma da demanda. Escreva primeiro no idioma da demanda e traduza o mesmo texto para o outro; não resuma nem mude o sentido. Em inglês, use os termos da regra 13 (Gate, Step, story, block). O painel mostra o idioma que o usuário escolhe na chave PT / EN.
+- As **chaves** e os valores de `situacao`, `status` e `quem` são fixos, sempre como aqui, em qualquer idioma: o painel traduz.
+- Etapas E0 a E6 **não** levam `nome`: o painel dá o nome no idioma escolhido.
+- `quem`: `analista` · `arquiteto` · `desenvolvedor` · `qa` · `orquestrador`.
 - `situacao`: `andamento` · `aguardando` (há parada ou pergunta esperando o usuário) · `bloqueada` · `pausada` · `concluida` · `cancelada`.
 - `status` de etapa ou bloco: `pendente` · `andamento` · `aguardando` · `concluida` · `devolvida` · `pulada` (etapa que o tamanho não usa).
-- `pendencias`: o que espera pelo usuário agora, uma frase por item (ex.: "Aprovar a história na Parada 1"). Vazio quando nada espera.
+- `pendencias`: o que espera pelo usuário agora, uma frase por item. Vazio quando nada espera.
 - `nota` (opcional, em etapa ou bloco): um detalhe curto, como "2 bloqueadores devolvidos".
 - Equipe, previsão de término e atividade recente **não** vão aqui: vêm dos hooks, automaticamente.
 
